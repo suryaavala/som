@@ -9,19 +9,12 @@ class SOM:
     def __init__(self, Size_X, Size_Y, dim_of_input_vec):
         self.network_dimensions = (Size_X, Size_Y, dim_of_input_vec)
         self.network = np.random.random(self.network_dimensions)
-        self.network_map = self._network_map()
+        # Works https://stackoverflow.com/questions/44230312/fastest-way-to-create-numpy-2d-array-of-indices/44230705#44230705
+        self.network_map = np.indices(
+            (self.network_dimensions[0], self.network_dimensions[1])).transpose(1, 2, 0)
         self.sigma_0 = max(self.network_dimensions[:2])/2
         self.alpha_0 = 0.1
         return
-
-    def _network_map(self):
-        row0 = np.arange(self.network_dimensions[0])
-        row1 = np.arange(self.network_dimensions[1])
-        nmap = np.empty(
-            (self.network_dimensions[0], self.network_dimensions[1], 2), dtype=int)
-        nmap[:, :, 0] = row0[:, None]
-        nmap[:, :, 1] = row1
-        return nmap
 
     def _find_bmu(self, current_input_vector):
         return np.unravel_index(np.argmin(np.sqrt(np.sum((current_input_vector-self.network)**2, axis=2))), (self.network_dimensions[0], self.network_dimensions[1]))

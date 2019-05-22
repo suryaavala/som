@@ -9,9 +9,19 @@ class SOM:
     def __init__(self, Size_X, Size_Y, dim_of_input_vec):
         self.network_dimensions = (Size_X, Size_Y, dim_of_input_vec)
         self.network = np.random.random(self.network_dimensions)
+        self.network_map = self._network_map()
         self.sigma_0 = max(self.network_dimensions[:2])/2
         self.alpha_0 = 0.1
         return
+
+    def _network_map(self):
+        row0 = np.arange(self.network_dimensions[0])
+        row1 = np.arange(self.network_dimensions[1])
+        nmap = np.empty(
+            (self.network_dimensions[0], self.network_dimensions[1], 2), dtype=int)
+        nmap[:, :, 0] = row0[:, None]
+        nmap[:, :, 1] = row1
+        return nmap
 
     def _find_bmu(self, current_input_vector):
         return np.unravel_index(np.argmin(np.sqrt(np.sum((current_input_vector-self.network)**2, axis=2))), (self.network_dimensions[0], self.network_dimensions[1]))
@@ -24,29 +34,40 @@ class SOM:
         lamDa = max_iterations/np.log(self.sigma_0)
         return self.alpha_0*np.exp(-current_iter_number/lamDa)
 
-        # def _euclidean_distance(self, input_vector, weight_vector):
-        #     return np.sqrt(np.sum((input_vector-weight_vector)**2))
+    def _alpha_influence_matrix(self, bmu_index, current_iter_number, max_iterations):
+        # 𝜃𝑡=exp(−𝑑2𝑖2𝜎2𝑡)
+        sigma_t_square = self._calc_neighbourhood_radius(
+            current_iter_number, max_iterations)**2
+        alpha_t = self._calc_learning_rate(current_iter_number, max_iterations)
+        return alpha_t*np.exp(np.sum((self.network_map-bmu_index)
+                                     ** 2, axis=2)*(-1/(2*sigma_t_square)))
 
-        # def __li_find_bmu(self, current_input_vector):
-        #     # list_euc_distances[euclidean_dist] = network_idx
-        #     # if two are more neurons have the same bmu then the one that was discovered last would be chosen
-        #     list_euc_distances = {}
-        #     for x in range(self.network_dimensions[0]):
-        #         for y in range(self.network_dimensions[1]):
-        #             current_euclidean_distance = (sum(
-        #                 [(current_input_vector[i]-self.network[x][y][i])**2 for i in range(self.network_dimensions[-1])]))**0.5
-        #             list_euc_distances[current_euclidean_distance] = (x, y)
-        #     return list_euc_distances[min(list(list_euc_distances.keys()))]
+    # def _mass_weight_update(self, alpha_influence_matrix):
+    #     return self.network + alpha_influence_matrix*
 
-        # def _multi_find_bmu(self, current_input_vector):
-        #     p = Pool(cpu_count())
-        #     func = partial(self._euclidean_distance, current_input_vector)
-        #     list_euc_distances = p.map(func, self.network.reshape(
-        #         self.network_dimensions[0]*self.network_dimensions[1], self.network_dimensions[-1]))
-        #     p.close()
-        #     p.join()
-        #     return np.unravel_index(np.argmin(np.asarray(list_euc_distances)),
-        #                             (self.network_dimensions[0], self.network_dimensions[1]))
+    # def _euclidean_distance(self, input_vector, weight_vector):
+    #     return np.sqrt(np.sum((input_vector-weight_vector)**2))
+
+    # def __li_find_bmu(self, current_input_vector):
+    #     # list_euc_distances[euclidean_dist] = network_idx
+    #     # if two are more neurons have the same bmu then the one that was discovered last would be chosen
+    #     list_euc_distances = {}
+    #     for x in range(self.network_dimensions[0]):
+    #         for y in range(self.network_dimensions[1]):
+    #             current_euclidean_distance = (sum(
+    #                 [(current_input_vector[i]-self.network[x][y][i])**2 for i in range(self.network_dimensions[-1])]))**0.5
+    #             list_euc_distances[current_euclidean_distance] = (x, y)
+    #     return list_euc_distances[min(list(list_euc_distances.keys()))]
+
+    # def _multi_find_bmu(self, current_input_vector):
+    #     p = Pool(cpu_count())
+    #     func = partial(self._euclidean_distance, current_input_vector)
+    #     list_euc_distances = p.map(func, self.network.reshape(
+    #         self.network_dimensions[0]*self.network_dimensions[1], self.network_dimensions[-1]))
+    #     p.close()
+    #     p.join()
+    #     return np.unravel_index(np.argmin(np.asarray(list_euc_distances)),
+    #                             (self.network_dimensions[0], self.network_dimensions[1]))
 
     def train(self, max_iterations):
         return
@@ -96,12 +117,12 @@ if __name__ == '__main__':
     # print(time.time()-start)
 
     np_start = time.time()
-    (n._find_bmu(np.array([0.32634494, 0.31266583, 0.30478276, 0.65890959, 0.08491201,
-                           0.48429509, 0.57543958, 0.79627358, 0.53857862, 0.30190754])))
+    bmu_index = n._find_bmu(np.array([0.32634494, 0.31266583, 0.30478276, 0.65890959, 0.08491201,
+                                      0.48429509, 0.57543958, 0.79627358, 0.53857862, 0.30190754]))
     print(time.time()-np_start)
 
     # p_start = time.time()
     # (n._multi_find_bmu(np.array([0.32634494, 0.31266583, 0.30478276, 0.65890959, 0.08491201,
     #                              0.48429509, 0.57543958, 0.79627358, 0.53857862, 0.30190754])))
     # print(time.time()-p_start)
-    print(max(n.network_dimensions[:2]))
+    print(n._alpha_influence_matrix(bmu_index, 10, 100))
